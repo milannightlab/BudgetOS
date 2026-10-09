@@ -36,7 +36,7 @@ export default async function TransactionsPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Transakcie"
+        title="Platby"
         description={monthLabel(year, month)}
         action={
           <AddTransactionSheet

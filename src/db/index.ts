@@ -4,6 +4,10 @@ import * as schema from "./schema";
 
 type Db = ReturnType<typeof createDb>;
 
+// Include a bump so HMR picks up relation renames that don't change export keys.
+// Bump when table columns change — Object.keys(schema) alone misses that.
+const schemaKey = `${Object.keys(schema).sort().join("|")}#overview-sort-v1`;
+
 function createDb() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -13,11 +17,15 @@ function createDb() {
   return drizzle(sql, { schema });
 }
 
-const globalForDb = globalThis as unknown as { db?: Db };
+const globalForDb = globalThis as unknown as {
+  db?: Db;
+  dbSchemaKey?: string;
+};
 
 function getDb(): Db {
-  if (!globalForDb.db) {
+  if (!globalForDb.db || globalForDb.dbSchemaKey !== schemaKey) {
     globalForDb.db = createDb();
+    globalForDb.dbSchemaKey = schemaKey;
   }
   return globalForDb.db;
 }

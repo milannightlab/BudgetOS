@@ -4,34 +4,75 @@ import {
   InviteForm,
   RenameWorkspaceForm,
 } from "@/components/settings-forms";
+import { ModuleToggles } from "@/components/settings/module-toggles";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getWorkspaceModules,
+  seedWorkspaceModules,
+} from "@/lib/modules";
+import {
+  buildModuleNavItems,
+  isOverviewNavKey,
+} from "@/lib/module-nav";
 import {
   getPendingInvites,
   getWorkspaceCategories,
   getWorkspaceMembers,
 } from "@/lib/queries";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { getModuleBySlug } from "@/modules/registry";
+import type { ModuleToggleRow } from "@/components/settings/module-toggles";
 
 export default async function SettingsPage() {
   const { workspace, user } = await getActiveWorkspace();
   if (!workspace) return null;
 
-  const [members, invites, categories] = await Promise.all([
+  await seedWorkspaceModules(workspace.id);
+
+  const [members, invites, categories, workspaceModules] = await Promise.all([
     getWorkspaceMembers(workspace.id),
     getPendingInvites(workspace.id),
     getWorkspaceCategories(workspace.id),
+    getWorkspaceModules(workspace.id),
   ]);
 
   const me = members.find((m) => m.userId === user.id);
   const isOwner = me?.role === "owner";
 
+  const enabledBySlug = new Map(
+    workspaceModules.map((m) => [m.slug, m.enabled]),
+  );
+  const moduleToggleRows: ModuleToggleRow[] = buildModuleNavItems({
+    overviewSortOrder: workspace.overviewSortOrder ?? 0,
+    modules: workspaceModules,
+    enabledOnly: false,
+  }).map((item) => {
+    if (isOverviewNavKey(item.key)) {
+      return {
+        key: item.key,
+        label: item.label,
+        description: "Domovský súhrn platieb, termínov a dokumentov",
+        enabled: true,
+        canDisable: false,
+      };
+    }
+    const def = getModuleBySlug(item.key);
+    return {
+      key: item.key,
+      label: item.label,
+      description: def?.description ?? "",
+      enabled: enabledBySlug.get(item.key) ?? true,
+      canDisable: true,
+    };
+  });
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Nastavenia"
-        description="Workspace, členovia a kategórie"
+        description="Workspace, moduly, členovia a kategórie"
       />
 
       <Card>
@@ -50,6 +91,22 @@ export default async function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Mena: {workspace.currency}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Aktívne moduly</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Prehľad je súčasťou sekcie Moduly a nedá sa vypnúť. Vypnutie ostatných
+            modulov ich skryje z navigácie. Poradie ťahaním platí pre menu.
+          </p>
+          <ModuleToggles
+            workspaceId={workspace.id}
+            modules={moduleToggleRows}
+          />
         </CardContent>
       </Card>
 

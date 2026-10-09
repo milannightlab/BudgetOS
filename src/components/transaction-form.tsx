@@ -20,11 +20,15 @@ type Category = { id: string; name: string };
 export function TransactionForm({
   workspaceId,
   categories,
+  moduleId,
+  itemId,
   defaultStatus = "actual",
   onSuccess,
 }: {
   workspaceId: string;
   categories: Category[];
+  moduleId?: string | null;
+  itemId?: string | null;
   defaultStatus?: "actual" | "planned";
   onSuccess?: () => void;
 }) {
@@ -41,6 +45,8 @@ export function TransactionForm({
           formData.set("type", type);
           formData.set("status", status);
           formData.set("categoryId", categoryId);
+          if (moduleId) formData.set("moduleId", moduleId);
+          if (itemId) formData.set("itemId", itemId);
           await createTransactionAction(formData);
           onSuccess?.();
         });

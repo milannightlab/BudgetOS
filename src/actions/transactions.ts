@@ -12,6 +12,8 @@ import { requireWorkspaceAccess } from "@/lib/workspace";
 const transactionSchema = z.object({
   workspaceId: z.string().min(1),
   categoryId: z.string().min(1),
+  moduleId: z.string().optional().nullable(),
+  itemId: z.string().optional().nullable(),
   title: z.string().trim().min(1).max(120),
   amount: z.coerce.number().positive(),
   type: z.enum(["income", "expense"]),
@@ -20,10 +22,24 @@ const transactionSchema = z.object({
   note: z.string().trim().max(500).optional().nullable(),
 });
 
+function revalidateFinance(itemId?: string | null) {
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/planned");
+  revalidatePath("/budgets");
+  revalidatePath("/reports");
+  revalidatePath("/modules", "layout");
+  if (itemId) revalidatePath(`/items/${itemId}`);
+}
+
 export async function createTransactionAction(formData: FormData) {
+  const moduleRaw = formData.get("moduleId");
+  const itemRaw = formData.get("itemId");
   const parsed = transactionSchema.parse({
     workspaceId: formData.get("workspaceId"),
     categoryId: formData.get("categoryId"),
+    moduleId: moduleRaw ? String(moduleRaw) : null,
+    itemId: itemRaw ? String(itemRaw) : null,
     title: formData.get("title"),
     amount: formData.get("amount"),
     type: formData.get("type"),
@@ -39,6 +55,8 @@ export async function createTransactionAction(formData: FormData) {
     id: createId("txn"),
     workspaceId: parsed.workspaceId,
     categoryId: parsed.categoryId,
+    moduleId: parsed.moduleId || null,
+    itemId: parsed.itemId || null,
     createdByUserId: user.id,
     title: parsed.title,
     amount: parsed.amount.toFixed(2),
@@ -48,18 +66,16 @@ export async function createTransactionAction(formData: FormData) {
     note: parsed.note,
   });
 
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidatePath("/planned");
-  revalidatePath("/budgets");
-  revalidatePath("/reports");
+  revalidateFinance(parsed.itemId);
 }
 
 export async function updateTransactionAction(formData: FormData) {
   const id = z.string().parse(formData.get("id"));
+  const moduleRaw = formData.get("moduleId");
   const parsed = transactionSchema.parse({
     workspaceId: formData.get("workspaceId"),
     categoryId: formData.get("categoryId"),
+    moduleId: moduleRaw ? String(moduleRaw) : null,
     title: formData.get("title"),
     amount: formData.get("amount"),
     type: formData.get("type"),
@@ -75,6 +91,7 @@ export async function updateTransactionAction(formData: FormData) {
     .update(transactions)
     .set({
       categoryId: parsed.categoryId,
+      moduleId: parsed.moduleId || null,
       title: parsed.title,
       amount: parsed.amount.toFixed(2),
       type: parsed.type,
@@ -89,11 +106,7 @@ export async function updateTransactionAction(formData: FormData) {
       ),
     );
 
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidatePath("/planned");
-  revalidatePath("/budgets");
-  revalidatePath("/reports");
+  revalidateFinance();
 }
 
 export async function markTransactionActualAction(id: string, workspaceId: string) {
@@ -107,11 +120,7 @@ export async function markTransactionActualAction(id: string, workspaceId: strin
       and(eq(transactions.id, id), eq(transactions.workspaceId, workspaceId)),
     );
 
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidatePath("/planned");
-  revalidatePath("/budgets");
-  revalidatePath("/reports");
+  revalidateFinance();
 }
 
 export async function deleteTransactionAction(id: string, workspaceId: string) {
@@ -124,9 +133,5 @@ export async function deleteTransactionAction(id: string, workspaceId: string) {
       and(eq(transactions.id, id), eq(transactions.workspaceId, workspaceId)),
     );
 
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidatePath("/planned");
-  revalidatePath("/budgets");
-  revalidatePath("/reports");
+  revalidateFinance();
 }

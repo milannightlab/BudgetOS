@@ -1,23 +1,21 @@
-# BudgetOS
+# Family OS
 
-Rodinná aplikácia na plánovanie rozpočtu — mobile-first PWA s podporou webu.
+Rodinný OS — modularná aplikácia na správu diania v rodine (termíny, dokumenty, financie) — mobile-first PWA.
 
-## Funkcie (MVP)
+## Moduly (základ)
 
-- Prihlásenie cez Clerk
-- Zdieľané workspaces + pozvánky e-mailom
-- Predvolené kategórie (Domácnosť, Deti, Auto, Investície, …)
-- Výdavky / príjmy (skutočné aj plánované)
-- Opakované platby (týždenne / mesačne / ročne)
-- Mesačné rozpočty podľa kategórií
-- Prehľady a reporty
+- **Prehľad** — fixný dashboard (plánované platby 30 dní, termíny, dokumenty)
+- **Domácnosť, Deti, Doprava, Predplatné, Úvery, Investície** — shell stránky so zdieľanými termínmi a dokumentmi (detail modulov neskôr)
+
+Rozširovanie: pridajte záznam do `src/modules/registry.ts` a voliteľne `src/modules/<slug>/`.
 
 ## Stack
 
 - Next.js (App Router) + Tailwind + shadcn/ui
 - Clerk Auth
 - Neon Postgres + Drizzle ORM
-- Vercel (deploy + denný cron na expand recurring)
+- Vercel Blob (dokumenty)
+- Vercel (deploy + cron na expand recurring)
 
 ## Setup
 
@@ -28,8 +26,9 @@ cp .env.example .env.local
 ```
 
 2. Doplňte hodnoty:
-   - `DATABASE_URL` z Neon (alebo `vercel integration add neon`)
-   - Clerk kľúče (alebo `vercel integration add clerk`)
+   - `DATABASE_URL` z Neon
+   - Clerk kľúče (Development `pk_test_` / `sk_test_`)
+   - `BLOB_READ_WRITE_TOKEN` z Vercel Blob (`vercel integration add blob` alebo Storage v dashboarde)
    - voliteľne `CRON_SECRET`
 
 3. Nainštalujte závislosti a vytvorte schému:
@@ -61,8 +60,8 @@ npm run dev
 
 ## PWA
 
-Aplikácia obsahuje `manifest.webmanifest` a service worker (`/sw.js`). Na telefóne ju môžete pridať na plochu z prehliadača.
+Aplikácia obsahuje `manifest.webmanifest` a service worker (`/sw.js`).
 
 ## Cron
 
-Endpoint `GET /api/cron/expand-recurring` denne generuje plánované transakcie z aktívnych opakovaných platieb. Autorizácia cez `Authorization: Bearer $CRON_SECRET`.
+Endpoint `GET /api/cron/expand-recurring` denne generuje plánované transakcie z aktívnych opakovaných platieb.

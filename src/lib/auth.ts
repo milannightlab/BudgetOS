@@ -18,13 +18,6 @@ export async function ensureDbUser() {
     throw new Error("Neprihlásený používateľ");
   }
 
-  const existing = await db.query.users.findFirst({
-    where: eq(users.clerkId, clerkUser.id),
-  });
-  if (existing) {
-    return existing;
-  }
-
   const email =
     clerkUser.primaryEmailAddress?.emailAddress ??
     clerkUser.emailAddresses[0]?.emailAddress ??
@@ -34,15 +27,39 @@ export async function ensureDbUser() {
     clerkUser.username ||
     email;
 
-  const [created] = await db
-    .insert(users)
-    .values({
-      id: createId("usr"),
-      clerkId: clerkUser.id,
-      email,
-      name,
-    })
-    .returning();
+  const existing = await db.query.users.findFirst({
+    where: eq(users.clerkId, clerkUser.id),
+  });
+  if (existing) {
+    if (existing.email !== email || existing.name !== name) {
+      const [updated] = await db
+        .update(users)
+        .set({ email, name })
+        .where(eq(users.id, existing.id))
+        .returning();
+      return updated ?? existing;
+    }
+    return existing;
+  }
 
-  return created;
+  try {
+    const [created] = await db
+      .insert(users)
+      .values({
+        id: createId("usr"),
+        clerkId: clerkUser.id,
+        email,
+        name,
+      })
+      .returning();
+    return created;
+  } catch {
+    const raced = await db.query.users.findFirst({
+      where: eq(users.clerkId, clerkUser.id),
+    });
+    if (!raced) {
+      throw new Error("Nepodarilo sa vytvoriť používateľa");
+    }
+    return raced;
+  }
 }

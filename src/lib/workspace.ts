@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { ensureDbUser } from "@/lib/auth";
 import { createId } from "@/lib/id";
+import { seedWorkspaceModules } from "@/lib/modules";
 
 export const WORKSPACE_COOKIE = "budgetos_workspace_id";
 
@@ -26,6 +27,8 @@ export async function createWorkspace(name: string, ownerUserId: string) {
     userId: ownerUserId,
     role: "owner",
   });
+
+  await seedWorkspaceModules(workspaceId);
 
   await db.insert(categories).values(
     DEFAULT_CATEGORIES.map((category) => ({

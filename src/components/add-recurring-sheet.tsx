@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { FormSheetContent } from "@/components/form-sheet-content";
 import { RecurringForm } from "@/components/recurring-form";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
-  SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -31,7 +31,7 @@ export function AddRecurringSheet({
           Opakovaná
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-2xl">
+      <FormSheetContent>
         <SheetHeader>
           <SheetTitle>Nová opakovaná platba</SheetTitle>
         </SheetHeader>
@@ -42,7 +42,7 @@ export function AddRecurringSheet({
             onSuccess={() => setOpen(false)}
           />
         </div>
-      </SheetContent>
+      </FormSheetContent>
     </Sheet>
   );
 }

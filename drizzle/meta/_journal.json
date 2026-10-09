@@ -8,6 +8,48 @@
       "when": 1791489542390,
       "tag": "0000_many_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791556356152,
+      "tag": "0001_clumsy_jigsaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791560542291,
+      "tag": "0002_tranquil_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791569670468,
+      "tag": "0003_property_sort_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791570455123,
+      "tag": "0004_vendors",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791571221003,
+      "tag": "0005_module_sort_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791571427354,
+      "tag": "0006_overview_sort_order",
+      "breakpoints": true
     }
   ]
 }

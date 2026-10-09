@@ -1,4 +1,4 @@
-import { endOfMonth, format, startOfMonth } from "date-fns";
+import { addDays, endOfMonth, format, startOfMonth } from "date-fns";
 
 export function currentYearMonth(date = new Date()) {
   return { year: date.getFullYear(), month: date.getMonth() + 1 };
@@ -15,4 +15,11 @@ export function monthBounds(year: number, month: number) {
 
 export function todayStr() {
   return format(new Date(), "yyyy-MM-dd");
+}
+
+export function nextDaysBounds(days: number, from = new Date()) {
+  return {
+    start: format(from, "yyyy-MM-dd"),
+    end: format(addDays(from, days), "yyyy-MM-dd"),
+  };
 }

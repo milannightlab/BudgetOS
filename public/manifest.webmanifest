@@ -1,7 +1,7 @@
 {
-  "name": "BudgetOS",
-  "short_name": "BudgetOS",
-  "description": "Rodinné plánovanie rozpočtu",
+  "name": "Family OS",
+  "short_name": "Family OS",
+  "description": "Rodinný OS na správu diania v rodine",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

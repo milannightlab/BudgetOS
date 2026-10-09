@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import {
   deleteTransactionAction,
   markTransactionActualAction,
@@ -17,6 +18,7 @@ export type TransactionRow = {
   type: "income" | "expense";
   status: "actual" | "planned";
   date: string;
+  itemId?: string | null;
   category: { name: string; color: string };
 };
 
@@ -25,11 +27,14 @@ export function TransactionList({
   workspaceId,
   currency = "EUR",
   showActions = true,
+  showItemLink = true,
 }: {
   items: TransactionRow[];
   workspaceId: string;
   currency?: string;
   showActions?: boolean;
+  /** When false, hide “← k položke” (e.g. already on property detail). */
+  showItemLink?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -56,6 +61,17 @@ export function TransactionList({
               </div>
               <p className="text-xs text-muted-foreground">
                 {item.category.name} · {item.date}
+                {showItemLink && item.itemId ? (
+                  <>
+                    {" · "}
+                    <Link
+                      href={`/items/${item.itemId}`}
+                      className="hover:underline"
+                    >
+                      ← k položke
+                    </Link>
+                  </>
+                ) : null}
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">

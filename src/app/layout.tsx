@@ -16,14 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BudgetOS",
-  description: "Rodinné plánovanie rozpočtu",
-  applicationName: "BudgetOS",
+  title: "Family OS",
+  description: "Rodinný OS na správu diania v rodine",
+  applicationName: "Family OS",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "BudgetOS",
+    title: "Family OS",
   },
 };
 

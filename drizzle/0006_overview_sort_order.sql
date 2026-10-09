@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "overview_sort_order" integer DEFAULT 0 NOT NULL;
