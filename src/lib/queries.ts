@@ -7,6 +7,7 @@ import {
   documents,
   itemRelations,
   items,
+  modules,
   recurringPayments,
   transactions,
   vendorCategories,
@@ -14,8 +15,384 @@ import {
   workspaceInvites,
   workspaceMembers,
 } from "@/db/schema";
+import { blobProxyUrl } from "@/lib/blob";
 import { monthBounds, nextDaysBounds } from "@/lib/dates";
+import { readItemColor } from "@/lib/item-color";
 import { toNumber } from "@/lib/money";
+import { getModuleBySlug } from "@/modules/registry";
+import type { UpcomingAgendaItem } from "@/lib/agenda-types";
+import type {
+  TimelineEvent,
+  TimelinePayment,
+} from "@/lib/timeline-types";
+
+export type {
+  TimelineEvent,
+  TimelinePayment,
+  TimelinePeriodData,
+} from "@/lib/timeline-types";
+export type { UpcomingAgendaItem } from "@/lib/agenda-types";
+
+const EVENT_TYPE_LABEL: Record<
+  "deadline" | "event" | "reminder",
+  string
+> = {
+  deadline: "Termín",
+  event: "Udalosť",
+  reminder: "Pripomienka",
+};
+
+function itemImageUrl(attributes: Record<string, unknown> | null | undefined) {
+  return blobProxyUrl(
+    typeof attributes?.imageUrl === "string" ? attributes.imageUrl : null,
+  );
+}
+
+async function resolveAgendaDisplayItems(
+  workspaceId: string,
+  itemIds: string[],
+) {
+  const uniqueIds = [...new Set(itemIds.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return new Map<string, UpcomingAgendaItem["item"]>();
+  }
+
+  const rows = await db.query.items.findMany({
+    where: and(
+      eq(items.workspaceId, workspaceId),
+      inArray(items.id, uniqueIds),
+    ),
+  });
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const serviceIdsNeedingParent = rows
+    .filter(
+      (row) =>
+        (row.type === "property_service" ||
+          row.type === "household_service" ||
+          row.type === "vehicle_service") &&
+        !itemImageUrl(row.attributes),
+    )
+    .map((row) => row.id);
+
+  const parentByService = new Map<string, string>();
+  if (serviceIdsNeedingParent.length > 0) {
+    const relations = await db.query.itemRelations.findMany({
+      where: and(
+        eq(itemRelations.workspaceId, workspaceId),
+        inArray(itemRelations.sourceItemId, serviceIdsNeedingParent),
+        eq(itemRelations.relationType, "belongs_to"),
+      ),
+    });
+    for (const rel of relations) {
+      parentByService.set(rel.sourceItemId, rel.targetItemId);
+    }
+  }
+
+  const parentIds = [...new Set(parentByService.values())].filter(
+    (id) => !byId.has(id),
+  );
+  if (parentIds.length > 0) {
+    const parents = await db.query.items.findMany({
+      where: and(
+        eq(items.workspaceId, workspaceId),
+        inArray(items.id, parentIds),
+      ),
+    });
+    for (const parent of parents) {
+      byId.set(parent.id, parent);
+    }
+  }
+
+  const moduleIds = [
+    ...new Set(
+      [...byId.values()].map((row) => row.moduleId).filter(Boolean),
+    ),
+  ];
+  const moduleSlugById = new Map<string, string>();
+  if (moduleIds.length > 0) {
+    const moduleRows = await db.query.modules.findMany({
+      where: and(
+        eq(modules.workspaceId, workspaceId),
+        inArray(modules.id, moduleIds),
+      ),
+    });
+    for (const mod of moduleRows) {
+      moduleSlugById.set(mod.id, mod.slug);
+    }
+  }
+
+  const vendorIds = [
+    ...new Set(
+      uniqueIds
+        .map((id) => byId.get(id)?.vendorId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const vendorLogoById = new Map<string, string | null>();
+  if (vendorIds.length > 0) {
+    const vendorRows = await db.query.vendors.findMany({
+      where: inArray(vendors.id, vendorIds),
+    });
+    for (const vendor of vendorRows) {
+      vendorLogoById.set(vendor.id, blobProxyUrl(vendor.logoUrl));
+    }
+  }
+
+  const result = new Map<string, UpcomingAgendaItem["item"]>();
+  for (const id of uniqueIds) {
+    const row = byId.get(id);
+    if (!row) {
+      result.set(id, null);
+      continue;
+    }
+
+    const parentId = parentByService.get(id);
+    const parent = parentId ? byId.get(parentId) : null;
+    const display = parent ?? row;
+    const imageUrl =
+      itemImageUrl(row.attributes) ?? itemImageUrl(display.attributes);
+    const slug = moduleSlugById.get(display.moduleId) ?? null;
+    const moduleLabel = slug ? (getModuleBySlug(slug)?.label ?? null) : null;
+
+    const color =
+      readItemColor(display.attributes) ?? readItemColor(row.attributes);
+
+    const vendorLogoUrl = row.vendorId
+      ? (vendorLogoById.get(row.vendorId) ?? null)
+      : null;
+
+    const attrs = row.attributes ?? {};
+    const categoryKey =
+      typeof attrs.serviceType === "string"
+        ? attrs.serviceType
+        : typeof attrs.vehicleCategory === "string"
+          ? attrs.vehicleCategory
+          : typeof attrs.serviceCategory === "string"
+            ? attrs.serviceCategory
+            : null;
+
+    result.set(id, {
+      id: display.id,
+      name: display.name,
+      type: display.type,
+      imageUrl,
+      moduleLabel,
+      moduleSlug: slug,
+      color,
+      vendorLogoUrl,
+      categoryKey,
+    });
+  }
+
+  return result;
+}
+
+async function resolveItemColors(
+  workspaceId: string,
+  itemIds: string[],
+): Promise<Map<string, string | null>> {
+  const uniqueIds = [...new Set(itemIds.filter(Boolean))];
+  const result = new Map<string, string | null>();
+  if (uniqueIds.length === 0) return result;
+
+  const rows = await db.query.items.findMany({
+    where: and(
+      eq(items.workspaceId, workspaceId),
+      inArray(items.id, uniqueIds),
+    ),
+  });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+
+  const serviceIdsNeedingParent = rows
+    .filter(
+      (row) =>
+        (row.type === "property_service" ||
+          row.type === "household_service" ||
+          row.type === "vehicle_service") &&
+        !readItemColor(row.attributes),
+    )
+    .map((row) => row.id);
+
+  const parentByService = new Map<string, string>();
+  if (serviceIdsNeedingParent.length > 0) {
+    const relations = await db.query.itemRelations.findMany({
+      where: and(
+        eq(itemRelations.workspaceId, workspaceId),
+        inArray(itemRelations.sourceItemId, serviceIdsNeedingParent),
+        eq(itemRelations.relationType, "belongs_to"),
+      ),
+    });
+    for (const rel of relations) {
+      parentByService.set(rel.sourceItemId, rel.targetItemId);
+    }
+  }
+
+  const parentIds = [...new Set(parentByService.values())].filter(
+    (id) => !byId.has(id),
+  );
+  if (parentIds.length > 0) {
+    const parents = await db.query.items.findMany({
+      where: and(
+        eq(items.workspaceId, workspaceId),
+        inArray(items.id, parentIds),
+      ),
+    });
+    for (const parent of parents) {
+      byId.set(parent.id, parent);
+    }
+  }
+
+  for (const id of uniqueIds) {
+    const row = byId.get(id);
+    if (!row) {
+      result.set(id, null);
+      continue;
+    }
+    const own = readItemColor(row.attributes);
+    if (own) {
+      result.set(id, own);
+      continue;
+    }
+    const parentId = parentByService.get(id);
+    const parent = parentId ? byId.get(parentId) : null;
+    result.set(id, readItemColor(parent?.attributes) ?? null);
+  }
+
+  return result;
+}
+
+/** Payments + calendar events for the overview agenda list. */
+export async function getUpcomingAgenda(
+  workspaceId: string,
+  fromDate?: string | null,
+  toDate?: string | null,
+  filterItemIds?: string[],
+): Promise<UpcomingAgendaItem[]> {
+  if (filterItemIds && filterItemIds.length === 0) return [];
+
+  const [paymentRows, eventRows] = await Promise.all([
+    db.query.transactions.findMany({
+      where: and(
+        eq(transactions.workspaceId, workspaceId),
+        fromDate ? gte(transactions.date, fromDate) : undefined,
+        toDate ? lte(transactions.date, toDate) : undefined,
+        filterItemIds ? inArray(transactions.itemId, filterItemIds) : undefined,
+      ),
+      with: { category: true },
+      orderBy: [asc(transactions.date)],
+    }),
+    db.query.calendarEvents.findMany({
+      where: and(
+        eq(calendarEvents.workspaceId, workspaceId),
+        fromDate ? gte(calendarEvents.eventDate, fromDate) : undefined,
+        toDate ? lte(calendarEvents.eventDate, toDate) : undefined,
+        filterItemIds
+          ? inArray(calendarEvents.itemId, filterItemIds)
+          : undefined,
+      ),
+      orderBy: [asc(calendarEvents.eventDate)],
+    }),
+  ]);
+
+  const itemIds = [
+    ...paymentRows.map((row) => row.itemId).filter(Boolean),
+    ...eventRows.map((row) => row.itemId).filter(Boolean),
+  ] as string[];
+  const displayItems = await resolveAgendaDisplayItems(workspaceId, itemIds);
+
+  const recurringIds = [
+    ...new Set(
+      paymentRows
+        .map((row) => row.recurringPaymentId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const recurringById = new Map<
+    string,
+    { frequency: "weekly" | "monthly" | "yearly"; endDate: string | null }
+  >();
+  if (recurringIds.length > 0) {
+    const recurringRows = await db.query.recurringPayments.findMany({
+      where: inArray(recurringPayments.id, recurringIds),
+      columns: { id: true, frequency: true, endDate: true },
+    });
+    for (const row of recurringRows) {
+      recurringById.set(row.id, {
+        frequency: row.frequency,
+        endDate: row.endDate,
+      });
+    }
+  }
+
+  const agenda: UpcomingAgendaItem[] = [];
+
+  for (const row of paymentRows) {
+    const date = asDateOnly(row.date);
+    const item = row.itemId ? (displayItems.get(row.itemId) ?? null) : null;
+    const note = row.note?.trim() || null;
+    const series = row.recurringPaymentId
+      ? (recurringById.get(row.recurringPaymentId) ?? null)
+      : null;
+    agenda.push({
+      id: `payment:${row.id}`,
+      entityId: row.id,
+      kind: "payment",
+      status: row.status === "actual" ? "done" : "open",
+      date,
+      title: row.title,
+      description: note ?? row.category.name,
+      note,
+      categoryName: row.category.name,
+      categoryId: row.categoryId,
+      amount: String(row.amount),
+      amountType: row.type,
+      eventType: null,
+      itemId: row.itemId ?? null,
+      href: item ? `/items/${item.id}` : null,
+      item,
+      recurringPaymentId: row.recurringPaymentId ?? null,
+      recurringFrequency: series?.frequency ?? null,
+      recurringEndDate: series?.endDate ?? null,
+    });
+  }
+
+  for (const row of eventRows) {
+    const date = asDateOnly(row.eventDate);
+    const item = row.itemId ? (displayItems.get(row.itemId) ?? null) : null;
+    const note = row.note?.trim() || null;
+    agenda.push({
+      id: `event:${row.id}`,
+      entityId: row.id,
+      kind: "event",
+      status: row.completed ? "done" : "open",
+      date,
+      title: row.title,
+      description: note ?? EVENT_TYPE_LABEL[row.type],
+      note,
+      categoryName: EVENT_TYPE_LABEL[row.type],
+      categoryId: null,
+      amount: null,
+      amountType: null,
+      eventType: row.type,
+      itemId: row.itemId ?? null,
+      href: item ? `/items/${item.id}` : null,
+      item,
+      recurringPaymentId: null,
+      recurringFrequency: null,
+      recurringEndDate: null,
+    });
+  }
+
+  agenda.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "open" ? -1 : 1;
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.kind !== b.kind) return a.kind === "payment" ? -1 : 1;
+    return a.title.localeCompare(b.title, "sk");
+  });
+
+  return agenda;
+}
 
 export async function getWorkspaceCategories(workspaceId: string) {
   return db.query.categories.findMany({
@@ -41,7 +418,12 @@ export async function getMonthTransactions(
       lte(transactions.date, end),
       status ? eq(transactions.status, status) : undefined,
     ),
-    with: { category: true },
+    with: {
+      category: true,
+      recurringPayment: {
+        columns: { id: true, frequency: true, endDate: true },
+      },
+    },
     orderBy: [desc(transactions.date), desc(transactions.createdAt)],
   });
 }
@@ -200,19 +582,72 @@ export async function getPlannedPaymentsNextDays(
   });
 }
 
-export async function getPlannedPaymentsChartData(
+function asDateOnly(value: string | Date): string {
+  if (typeof value === "string") return value.slice(0, 10);
+  return value.toISOString().slice(0, 10);
+}
+
+/** Planned payments + calendar events for the interactive overview timeline. */
+export async function getPaymentTimelineData(
   workspaceId: string,
-  days = 30,
+  fromDate: string,
+  toDate: string,
+  itemIds?: string[],
 ) {
-  const rows = await getPlannedPaymentsNextDays(workspaceId, days);
-  const byDate = new Map<string, number>();
-  for (const row of rows) {
-    if (row.type !== "expense") continue;
-    byDate.set(row.date, (byDate.get(row.date) ?? 0) + toNumber(row.amount));
+  if (itemIds && itemIds.length === 0) {
+    return { payments: [] as TimelinePayment[], events: [] as TimelineEvent[] };
   }
-  return [...byDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, total]) => ({ date, total }));
+
+  const [paymentRows, eventRows] = await Promise.all([
+    db.query.transactions.findMany({
+      where: and(
+        eq(transactions.workspaceId, workspaceId),
+        gte(transactions.date, fromDate),
+        lte(transactions.date, toDate),
+        itemIds ? inArray(transactions.itemId, itemIds) : undefined,
+      ),
+      with: { category: true },
+      orderBy: [asc(transactions.date)],
+    }),
+    db.query.calendarEvents.findMany({
+      where: and(
+        eq(calendarEvents.workspaceId, workspaceId),
+        gte(calendarEvents.eventDate, fromDate),
+        lte(calendarEvents.eventDate, toDate),
+        itemIds ? inArray(calendarEvents.itemId, itemIds) : undefined,
+      ),
+      orderBy: [asc(calendarEvents.eventDate)],
+    }),
+  ]);
+
+  const itemColors = await resolveItemColors(
+    workspaceId,
+    paymentRows.map((row) => row.itemId).filter(Boolean) as string[],
+  );
+
+  const payments: TimelinePayment[] = paymentRows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    amount: String(row.amount),
+    date: asDateOnly(row.date),
+    type: row.type,
+    status: row.status,
+    itemId: row.itemId ?? null,
+    itemColor: row.itemId ? (itemColors.get(row.itemId) ?? null) : null,
+    category: {
+      name: row.category.name,
+      color: row.category.color,
+    },
+  }));
+
+  const events: TimelineEvent[] = eventRows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    eventDate: asDateOnly(row.eventDate),
+    type: row.type,
+  }));
+
+  return { payments, events };
 }
 
 export async function getUpcomingEvents(
@@ -484,6 +919,38 @@ export async function getWorkspaceItemsForSelect(workspaceId: string) {
   });
 }
 
+export async function getTransactionItemPickerGroups(
+  workspaceId: string,
+  options?: { filterModuleId?: string | null },
+) {
+  const { buildTransactionItemPickerGroups } = await import(
+    "@/lib/transaction-item-picker"
+  );
+  const [itemRows, moduleRows] = await Promise.all([
+    getAllWorkspaceItems(workspaceId),
+    db.query.modules.findMany({
+      where: eq(modules.workspaceId, workspaceId),
+      columns: { id: true, slug: true, enabled: true, sortOrder: true },
+    }),
+  ]);
+
+  const activeItems = itemRows.filter((i) => i.status === "active");
+  return buildTransactionItemPickerGroups(
+    activeItems.map((i) => ({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+      moduleId: i.moduleId,
+      status: i.status,
+      attributes: i.attributes,
+      parentItemId: i.parentItemId ?? i.parentPropertyId,
+      parentPropertyId: i.parentPropertyId,
+    })),
+    moduleRows.filter((m) => m.enabled !== false),
+    options,
+  );
+}
+
 export async function getAllWorkspaceEvents(workspaceId: string) {
   return db.query.calendarEvents.findMany({
     where: eq(calendarEvents.workspaceId, workspaceId),
@@ -507,31 +974,30 @@ export async function getAllWorkspaceItems(workspaceId: string) {
     orderBy: [asc(items.name)],
   });
 
-  const serviceIds = rows
-    .filter(
-      (r) =>
-        r.type === "property_service" || r.type === "household_service",
-    )
-    .map((r) => r.id);
-
-  const parentByService = new Map<string, string>();
-  if (serviceIds.length > 0) {
+  const itemIds = rows.map((r) => r.id);
+  const parentByItem = new Map<string, string>();
+  if (itemIds.length > 0) {
     const relations = await db.query.itemRelations.findMany({
       where: and(
         eq(itemRelations.workspaceId, workspaceId),
-        inArray(itemRelations.sourceItemId, serviceIds),
+        inArray(itemRelations.sourceItemId, itemIds),
         eq(itemRelations.relationType, "belongs_to"),
       ),
     });
     for (const rel of relations) {
-      parentByService.set(rel.sourceItemId, rel.targetItemId);
+      parentByItem.set(rel.sourceItemId, rel.targetItemId);
     }
   }
 
-  return rows.map((row) => ({
-    ...row,
-    parentPropertyId: parentByService.get(row.id) ?? null,
-  }));
+  return rows.map((row) => {
+    const parentItemId = parentByItem.get(row.id) ?? null;
+    return {
+      ...row,
+      parentItemId,
+      /** @deprecated Prefer parentItemId — kept for property-service path helpers. */
+      parentPropertyId: parentItemId,
+    };
+  });
 }
 
 /** Services linked to a property via belongs_to (source=service, target=property). */
@@ -565,17 +1031,99 @@ export async function getParentPropertyId(
   workspaceId: string,
   serviceId: string,
 ) {
+  return getParentItemId(workspaceId, serviceId);
+}
+
+export async function getParentItemId(workspaceId: string, itemId: string) {
   const relation = await db.query.itemRelations.findFirst({
     where: and(
       eq(itemRelations.workspaceId, workspaceId),
-      eq(itemRelations.sourceItemId, serviceId),
+      eq(itemRelations.sourceItemId, itemId),
       eq(itemRelations.relationType, "belongs_to"),
     ),
   });
   return relation?.targetItemId ?? null;
 }
 
-async function getPropertySubtreeItemIds(
+/** Services linked to a vehicle via belongs_to (source=service, target=vehicle). */
+export async function getVehicleServices(
+  workspaceId: string,
+  vehicleId: string,
+) {
+  const relations = await db.query.itemRelations.findMany({
+    where: and(
+      eq(itemRelations.workspaceId, workspaceId),
+      eq(itemRelations.targetItemId, vehicleId),
+      eq(itemRelations.relationType, "belongs_to"),
+    ),
+    with: {
+      sourceItem: {
+        with: { vendor: true },
+      },
+    },
+  });
+  return relations
+    .map((r) => r.sourceItem)
+    .filter(
+      (item) =>
+        item &&
+        item.type === "vehicle_service" &&
+        item.status !== "archived",
+    );
+}
+
+export async function getVehicleSubtreeItemIds(
+  workspaceId: string,
+  vehicleId: string,
+) {
+  const services = await getVehicleServices(workspaceId, vehicleId);
+  return [vehicleId, ...services.map((s) => s.id)];
+}
+
+export async function getVehicleSubtreePayments(
+  workspaceId: string,
+  vehicleId: string,
+) {
+  const ids = await getVehicleSubtreeItemIds(workspaceId, vehicleId);
+  return db.query.transactions.findMany({
+    where: and(
+      eq(transactions.workspaceId, workspaceId),
+      inArray(transactions.itemId, ids),
+    ),
+    with: { category: true },
+    orderBy: [desc(transactions.date), desc(transactions.createdAt)],
+  });
+}
+
+export async function getVehicleSubtreeEvents(
+  workspaceId: string,
+  vehicleId: string,
+) {
+  const ids = await getVehicleSubtreeItemIds(workspaceId, vehicleId);
+  return db.query.calendarEvents.findMany({
+    where: and(
+      eq(calendarEvents.workspaceId, workspaceId),
+      inArray(calendarEvents.itemId, ids),
+    ),
+    orderBy: [asc(calendarEvents.eventDate)],
+  });
+}
+
+export async function getVehicleSubtreeDocuments(
+  workspaceId: string,
+  vehicleId: string,
+) {
+  const ids = await getVehicleSubtreeItemIds(workspaceId, vehicleId);
+  return db.query.documents.findMany({
+    where: and(
+      eq(documents.workspaceId, workspaceId),
+      inArray(documents.itemId, ids),
+    ),
+    orderBy: [desc(documents.createdAt)],
+  });
+}
+
+export async function getPropertySubtreeItemIds(
   workspaceId: string,
   propertyId: string,
 ) {
@@ -688,6 +1236,55 @@ export async function getPropertyCardSummaries(
     ).length;
     const nextEvent = events.find((e) => e.itemId && idSet.has(e.itemId));
     result.set(propertyId, {
+      paymentCount,
+      nextEventDate: nextEvent?.eventDate ?? null,
+    });
+  }
+
+  return result;
+}
+
+export async function getVehicleCardSummaries(
+  workspaceId: string,
+  vehicleIds: string[],
+) {
+  if (vehicleIds.length === 0) {
+    return new Map<
+      string,
+      { paymentCount: number; nextEventDate: string | null }
+    >();
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [payments, events] = await Promise.all([
+    db.query.transactions.findMany({
+      where: and(
+        eq(transactions.workspaceId, workspaceId),
+        inArray(transactions.itemId, vehicleIds),
+      ),
+      columns: { id: true, itemId: true },
+    }),
+    db.query.calendarEvents.findMany({
+      where: and(
+        eq(calendarEvents.workspaceId, workspaceId),
+        inArray(calendarEvents.itemId, vehicleIds),
+        gte(calendarEvents.eventDate, today),
+      ),
+      columns: { itemId: true, eventDate: true },
+      orderBy: [asc(calendarEvents.eventDate)],
+    }),
+  ]);
+
+  const result = new Map<
+    string,
+    { paymentCount: number; nextEventDate: string | null }
+  >();
+
+  for (const vehicleId of vehicleIds) {
+    const paymentCount = payments.filter((p) => p.itemId === vehicleId).length;
+    const nextEvent = events.find((e) => e.itemId === vehicleId);
+    result.set(vehicleId, {
       paymentCount,
       nextEventDate: nextEvent?.eventDate ?? null,
     });

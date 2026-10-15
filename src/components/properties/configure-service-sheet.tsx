@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { configurePropertyServiceAction } from "@/actions/properties";
 import { FormSheetContent } from "@/components/form-sheet-content";
 import { VendorSelector } from "@/components/vendors/vendor-selector";
@@ -16,7 +17,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import type { VendorListItem } from "@/lib/queries";
-import { propertyServicePath } from "@/lib/property-paths";
 
 export function ConfigureServiceSheet({
   workspaceId,
@@ -55,11 +55,17 @@ export function ConfigureServiceSheet({
           className="space-y-3 px-4 pb-6"
           action={(formData) => {
             startTransition(async () => {
-              const result = await configurePropertyServiceAction(formData);
-              setOpen(false);
-              setVendor(null);
-              router.push(propertyServicePath(propertyId, result.id));
-              router.refresh();
+              try {
+                await configurePropertyServiceAction(formData);
+                setOpen(false);
+                setVendor(null);
+                toast.success("Služba bola úspešne pridaná");
+                router.refresh();
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : "Nepodarilo sa pridať službu",
+                );
+              }
             });
           }}
         >

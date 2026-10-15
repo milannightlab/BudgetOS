@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { MobileBackCrumb } from "@/components/app-breadcrumbs";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
 import { DocumentList } from "@/components/documents/document-list";
 import { EmptyState } from "@/components/empty-state";
@@ -94,21 +93,22 @@ export function ServiceDetail({
     typeof attrs.customerNumber === "string" ? attrs.customerNumber : null;
   const notes = typeof attrs.notes === "string" ? attrs.notes : null;
 
+  const crumbs = [
+    { label: "Nehnuteľnosti", href: propertiesModulePath() },
+    ...(parentPropertyId
+      ? [
+          {
+            label: parentPropertyName ?? "Nehnuteľnosť",
+            href: propertyPath(parentPropertyId),
+          },
+        ]
+      : []),
+    { label: service.name },
+  ];
+
   return (
     <div className="space-y-5">
-      <Link
-        href={
-          parentPropertyId
-            ? propertyPath(parentPropertyId)
-            : propertiesModulePath()
-        }
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        {parentPropertyName
-          ? `Späť na ${parentPropertyName}`
-          : "Späť na nehnuteľnosti"}
-      </Link>
+      <MobileBackCrumb crumbs={crumbs} />
 
       <PageHeader
         title={service.name}
@@ -178,6 +178,11 @@ export function ServiceDetail({
             categories={categories}
             moduleId={service.moduleId}
             itemId={service.id}
+            lockedItemLabel={
+              providerName
+                ? `${service.name} (${providerName})`
+                : service.name
+            }
             label="Pridať platbu"
             variant="outline"
           />

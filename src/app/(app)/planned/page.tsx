@@ -53,9 +53,24 @@ export default async function PlannedPage() {
             />
           ) : (
             <TransactionList
-              items={planned}
+              items={planned.map((row) => ({
+                id: row.id,
+                title: row.title,
+                amount: String(row.amount),
+                type: row.type,
+                status: row.status,
+                date: row.date,
+                note: row.note,
+                categoryId: row.categoryId,
+                itemId: row.itemId,
+                recurringPaymentId: row.recurringPaymentId,
+                recurringFrequency: row.recurringPayment?.frequency ?? null,
+                recurringEndDate: row.recurringPayment?.endDate ?? null,
+                category: row.category,
+              }))}
               workspaceId={workspace.id}
               currency={workspace.currency}
+              categories={categories.map((c) => ({ id: c.id, name: c.name }))}
             />
           )}
         </TabsContent>

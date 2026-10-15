@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, X } from "lucide-react";
 import { savePropertyAction } from "@/actions/properties";
+import { ItemColorField } from "@/components/items/item-color-field";
 import { Button } from "@/components/ui/button";
 import { propertyPath } from "@/lib/property-paths";
+import { DEFAULT_ITEM_COLOR } from "@/lib/item-color";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,6 +39,7 @@ type Initial = {
   address?: string;
   relationshipType?: string;
   imageUrl?: string;
+  color?: string;
   hiddenServiceTypes?: string[];
 };
 
@@ -62,6 +65,7 @@ export function PropertyForm({
     initial?.imageUrl ?? null,
   );
   const [removeImage, setRemoveImage] = useState(false);
+  const [color, setColor] = useState(initial?.color ?? DEFAULT_ITEM_COLOR);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +77,7 @@ export function PropertyForm({
           setError(null);
           try {
             formData.set("attr_propertyType", propertyType);
+            formData.set("attr_color", color);
             if (relationshipType !== "none") {
               formData.set("attr_relationshipType", relationshipType);
             }
@@ -149,6 +154,8 @@ export function PropertyForm({
           placeholder="Napr. Náš dom"
         />
       </div>
+
+      <ItemColorField value={color} onChange={setColor} />
 
       <div className="space-y-1.5">
         <Label>Typ nehnuteľnosti</Label>

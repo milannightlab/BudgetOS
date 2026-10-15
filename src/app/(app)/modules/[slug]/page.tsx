@@ -16,9 +16,11 @@ import {
   getModuleEvents,
   getModuleItems,
   getModulePayments,
+  getTransactionItemPickerGroups,
   getWorkspaceCategories,
   getWorkspaceMembers,
 } from "@/lib/queries";
+import { vehiclesModulePath } from "@/lib/vehicle-paths";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { getModuleBySlug, isModuleSlug } from "@/modules/registry";
 
@@ -29,8 +31,9 @@ export default async function ModulePage({
 }) {
   const { slug } = await params;
   if (!isModuleSlug(slug)) notFound();
-  // Dedicated tree under modules/household/* — never render generic Položky UI.
+  // Dedicated trees under modules/household/* and modules/transport/*.
   if (slug === "household") redirect(propertiesModulePath());
+  if (slug === "transport") redirect(vehiclesModulePath());
 
   const definition = getModuleBySlug(slug);
   if (!definition) notFound();
@@ -41,7 +44,7 @@ export default async function ModulePage({
   const moduleRow = await getModuleBySlugForWorkspace(workspace.id, slug);
   if (!moduleRow || !moduleRow.enabled) notFound();
 
-  const [events, docs, payments, categories, moduleItems, members] =
+  const [events, docs, payments, categories, moduleItems, members, itemPickerGroups] =
     await Promise.all([
       getModuleEvents(workspace.id, moduleRow.id),
       getModuleDocuments(workspace.id, moduleRow.id),
@@ -49,6 +52,9 @@ export default async function ModulePage({
       getWorkspaceCategories(workspace.id),
       getModuleItems(workspace.id, moduleRow.id),
       getWorkspaceMembers(workspace.id),
+      getTransactionItemPickerGroups(workspace.id, {
+        filterModuleId: moduleRow.id,
+      }),
     ]);
 
   const memberOptions = members.map((m) => ({
@@ -115,6 +121,7 @@ export default async function ModulePage({
             workspaceId={workspace.id}
             categories={categories}
             moduleId={moduleRow.id}
+            itemPickerGroups={itemPickerGroups}
             label="Platba"
             variant="outline"
           />

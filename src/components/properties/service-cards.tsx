@@ -118,13 +118,13 @@ export function ServiceCards({
               href={propertyServicePath(propertyId, service.id)}
               className="rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 {logoSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logoSrc}
                     alt=""
-                    className="size-9 shrink-0 rounded-lg border border-border bg-white object-contain p-0.5"
+                    className="size-14 shrink-0 rounded-xl bg-white object-contain p-1"
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
@@ -186,17 +186,17 @@ function ServiceCard({
           href={propertyServicePath(propertyId, configured.id)}
           className="block"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             {logoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoSrc}
                 alt=""
-                className="size-9 shrink-0 rounded-lg border border-border bg-white object-contain p-0.5"
+                className="size-14 shrink-0 rounded-xl bg-white object-contain p-1"
               />
             ) : (
-              <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                <Icon className="size-4" />
+              <div className="flex size-14 items-center justify-center rounded-xl bg-muted">
+                <Icon className="size-6" />
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -222,9 +222,9 @@ function ServiceCard({
 
   return (
     <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <Icon className="size-4 text-muted-foreground" />
+      <div className="flex items-center gap-3">
+        <div className="flex size-14 items-center justify-center rounded-xl bg-muted">
+          <Icon className="size-6 text-muted-foreground" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{template.label}</p>

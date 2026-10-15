@@ -1,3 +1,5 @@
+import { vehiclePath, vehicleServicePath } from "@/lib/vehicle-paths";
+
 export function propertyPath(propertyId: string) {
   return `/modules/household/${propertyId}`;
 }
@@ -15,13 +17,19 @@ export function itemDetailPath(item: {
   id: string;
   type: string;
   parentPropertyId?: string | null;
+  parentItemId?: string | null;
 }) {
+  const parentId = item.parentItemId ?? item.parentPropertyId ?? null;
   if (item.type === "property") return propertyPath(item.id);
+  if (item.type === "vehicle") return vehiclePath(item.id);
   if (
     (item.type === "property_service" || item.type === "household_service") &&
-    item.parentPropertyId
+    parentId
   ) {
-    return propertyServicePath(item.parentPropertyId, item.id);
+    return propertyServicePath(parentId, item.id);
+  }
+  if (item.type === "vehicle_service" && parentId) {
+    return vehicleServicePath(parentId, item.id);
   }
   return `/items/${item.id}`;
 }

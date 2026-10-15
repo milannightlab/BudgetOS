@@ -6,6 +6,9 @@ import {
   getItemSubtreeEvents,
   getItemSubtreePayments,
   getPropertyServices,
+  getPropertySubtreeItemIds,
+  getTransactionItemPickerGroups,
+  getUpcomingAgenda,
   getWorkspaceCategories,
 } from "@/lib/queries";
 import { getActiveWorkspace } from "@/lib/workspace";
@@ -22,13 +25,20 @@ export default async function PropertyDetailPage({
   const property = await getItemById(workspace.id, propertyId);
   if (!property || property.type !== "property") notFound();
 
-  const [services, payments, events, docs, categories] = await Promise.all([
-    getPropertyServices(workspace.id, property.id),
-    getItemSubtreePayments(workspace.id, property.id),
-    getItemSubtreeEvents(workspace.id, property.id),
-    getItemSubtreeDocuments(workspace.id, property.id),
-    getWorkspaceCategories(workspace.id),
-  ]);
+  const itemIds = await getPropertySubtreeItemIds(workspace.id, property.id);
+
+  const [services, payments, events, docs, categories, itemPickerGroups, agenda] =
+    await Promise.all([
+      getPropertyServices(workspace.id, property.id),
+      getItemSubtreePayments(workspace.id, property.id),
+      getItemSubtreeEvents(workspace.id, property.id),
+      getItemSubtreeDocuments(workspace.id, property.id),
+      getWorkspaceCategories(workspace.id),
+      getTransactionItemPickerGroups(workspace.id, {
+        filterModuleId: property.moduleId,
+      }),
+      getUpcomingAgenda(workspace.id, null, null, itemIds),
+    ]);
 
   return (
     <PropertyDetail
@@ -40,6 +50,8 @@ export default async function PropertyDetailPage({
       events={events}
       docs={docs}
       categories={categories}
+      itemPickerGroups={itemPickerGroups}
+      agenda={agenda}
     />
   );
 }

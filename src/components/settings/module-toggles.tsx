@@ -85,6 +85,7 @@ export function ModuleToggles({
   return (
     <div className="overflow-x-clip">
       <DndContext
+        id="modules-sortable"
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToParentElement]}

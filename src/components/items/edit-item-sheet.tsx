@@ -51,22 +51,25 @@ export function EditItemSheet({
           <SheetTitle>Upraviť položku</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-6">
-          <ItemForm
-            workspaceId={workspaceId}
-            moduleId={moduleId}
-            moduleSlug={moduleSlug}
-            members={members}
-            initial={{
-              id: item.id,
-              type: item.type,
-              name: item.name,
-              description: item.description,
-              status: item.status,
-              assignedMemberUserId: item.assignedMemberUserId,
-              attributes: item.attributes ?? {},
-            }}
-            onSuccess={() => setOpen(false)}
-          />
+          {open ? (
+            <ItemForm
+              key={item.id}
+              workspaceId={workspaceId}
+              moduleId={moduleId}
+              moduleSlug={moduleSlug}
+              members={members}
+              initial={{
+                id: item.id,
+                type: item.type,
+                name: item.name,
+                description: item.description,
+                status: item.status,
+                assignedMemberUserId: item.assignedMemberUserId,
+                attributes: item.attributes ?? {},
+              }}
+              onSuccess={() => setOpen(false)}
+            />
+          ) : null}
         </div>
       </FormSheetContent>
     </Sheet>

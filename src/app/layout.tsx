@@ -51,7 +51,7 @@ export default function RootLayout({
           } as React.CSSProperties
         }
       >
-        <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+        <body className="flex min-h-full flex-col bg-[#F7F9F8] text-foreground font-sans">
           {children}
           <PwaRegister />
           <Toaster />

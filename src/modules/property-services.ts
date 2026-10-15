@@ -4,6 +4,7 @@ import {
   Droplets,
   Flame,
   Heater,
+  Landmark,
   Trash2,
   Wallet,
   Wifi,
@@ -30,6 +31,7 @@ const CORE_SERVICES: ServiceTemplate[] = [
   { serviceType: "internet", label: "Internet", icon: Wifi },
   { serviceType: "waste", label: "Odpad", icon: Trash2 },
   { serviceType: "heating", label: "Vykurovanie", icon: Heater },
+  { serviceType: "mortgage", label: "Hypotéka", icon: Landmark },
 ];
 
 const APARTMENT_EXTRA: ServiceTemplate[] = [

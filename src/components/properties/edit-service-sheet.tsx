@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil } from "lucide-react";
 import { updatePropertyServiceAction } from "@/actions/properties";
 import { FormSheetContent } from "@/components/form-sheet-content";
+import { ItemColorField } from "@/components/items/item-color-field";
 import { VendorSelector } from "@/components/vendors/vendor-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { DEFAULT_ITEM_COLOR, readItemColor } from "@/lib/item-color";
 import type { VendorListItem } from "@/lib/queries";
 
 export function EditServiceSheet({
@@ -52,13 +54,19 @@ export function EditServiceSheet({
     : null;
 
   const [vendor, setVendor] = useState<VendorListItem | null>(initialVendor);
+  const [color, setColor] = useState(
+    readItemColor(attrs) ?? DEFAULT_ITEM_COLOR,
+  );
 
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) setVendor(initialVendor);
+        if (next) {
+          setVendor(initialVendor);
+          setColor(readItemColor(attrs) ?? DEFAULT_ITEM_COLOR);
+        }
       }}
     >
       <SheetTrigger asChild>
@@ -93,6 +101,7 @@ export function EditServiceSheet({
               defaultValue={service.name}
             />
           </div>
+          <ItemColorField value={color} onChange={setColor} />
           <div className="space-y-1.5">
             <Label>Dodávateľ</Label>
             <VendorSelector

@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { blobProxyUrl } from "@/lib/blob";
+import { readItemColor } from "@/lib/item-color";
 import { parseHiddenServiceTypes } from "@/modules/property-services";
 
 export function EditPropertySheet({
@@ -43,30 +44,34 @@ export function EditPropertySheet({
           <SheetTitle>Upraviť nehnuteľnosť</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-6">
-          <PropertyForm
-            workspaceId={workspaceId}
-            moduleId={moduleId}
-            initial={{
-              id: item.id,
-              name: item.name,
-              propertyType:
-                typeof attrs.propertyType === "string"
-                  ? attrs.propertyType
-                  : "house",
-              address:
-                typeof attrs.address === "string" ? attrs.address : undefined,
-              relationshipType:
-                typeof attrs.relationshipType === "string"
-                  ? attrs.relationshipType
-                  : undefined,
-              imageUrl:
-                blobProxyUrl(
-                  typeof attrs.imageUrl === "string" ? attrs.imageUrl : null,
-                ) ?? undefined,
-              hiddenServiceTypes: parseHiddenServiceTypes(attrs),
-            }}
-            onSuccess={() => setOpen(false)}
-          />
+          {open ? (
+            <PropertyForm
+              key={item.id}
+              workspaceId={workspaceId}
+              moduleId={moduleId}
+              initial={{
+                id: item.id,
+                name: item.name,
+                propertyType:
+                  typeof attrs.propertyType === "string"
+                    ? attrs.propertyType
+                    : "house",
+                address:
+                  typeof attrs.address === "string" ? attrs.address : undefined,
+                relationshipType:
+                  typeof attrs.relationshipType === "string"
+                    ? attrs.relationshipType
+                    : undefined,
+                imageUrl:
+                  blobProxyUrl(
+                    typeof attrs.imageUrl === "string" ? attrs.imageUrl : null,
+                  ) ?? undefined,
+                color: readItemColor(attrs) ?? undefined,
+                hiddenServiceTypes: parseHiddenServiceTypes(attrs),
+              }}
+              onSuccess={() => setOpen(false)}
+            />
+          ) : null}
         </div>
       </FormSheetContent>
     </Sheet>

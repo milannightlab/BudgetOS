@@ -1,20 +1,18 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { AddTransactionSheet } from "@/components/add-transaction-sheet";
+import { MobileBackCrumb } from "@/components/app-breadcrumbs";
 import { DocumentList } from "@/components/documents/document-list";
 import { EmptyState } from "@/components/empty-state";
-import { EventList } from "@/components/events/event-list";
 import { AddDocumentSheet } from "@/components/modules/add-document-sheet";
-import { AddEventSheet } from "@/components/modules/add-event-sheet";
 import { EditPropertySheet } from "@/components/properties/edit-property-sheet";
+import { PropertyAgenda } from "@/components/properties/property-agenda";
 import { ServiceCards } from "@/components/properties/service-cards";
 import { PageHeader } from "@/components/page-header";
-import { TransactionList } from "@/components/transaction-list";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import type { UpcomingAgendaItem } from "@/lib/agenda-types";
 import { blobProxyUrl } from "@/lib/blob";
 import { formatMoney, toNumber } from "@/lib/money";
 import { propertiesModulePath } from "@/lib/property-paths";
+import type { TransactionItemOptionGroup } from "@/lib/transaction-item-picker";
 import {
   PROPERTY_TYPE_LABELS,
   RELATIONSHIP_TYPE_LABELS,
@@ -70,6 +68,8 @@ export function PropertyDetail({
   events,
   docs,
   categories,
+  itemPickerGroups,
+  agenda,
 }: {
   workspaceId: string;
   currency: string;
@@ -79,6 +79,8 @@ export function PropertyDetail({
   events: EventRow[];
   docs: DocRow[];
   categories: Category[];
+  itemPickerGroups: TransactionItemOptionGroup[];
+  agenda: UpcomingAgendaItem[];
 }) {
   const attrs = (property.attributes ?? {}) as Record<string, unknown>;
   const propertyType =
@@ -125,41 +127,44 @@ export function PropertyDetail({
     }
   }
 
+  const crumbs = [
+    { label: "Nehnuteľnosti", href: propertiesModulePath() },
+    { label: property.name },
+  ];
+
   return (
     <div className="space-y-5">
-      <Link
-        href={propertiesModulePath()}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Späť na nehnuteľnosti
-      </Link>
+      <MobileBackCrumb crumbs={crumbs} />
 
-      <PageHeader
-        title={property.name}
-        description={address ?? undefined}
-        action={
-          <EditPropertySheet
-            workspaceId={workspaceId}
-            moduleId={property.moduleId}
-            item={property}
+      <div className="flex gap-4">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={property.name}
+            className="size-24 shrink-0 rounded-xl object-cover sm:size-32"
           />
-        }
-      />
-
-      {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt={property.name}
-          className="h-48 w-full rounded-xl object-cover sm:h-64"
-        />
-      ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary">{typeLabel}</Badge>
-        {relationship ? <Badge variant="outline">{relationship}</Badge> : null}
-        {address ? <Badge variant="outline">{address}</Badge> : null}
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-3">
+          <PageHeader
+            title={property.name}
+            description={address ?? undefined}
+            action={
+              <EditPropertySheet
+                workspaceId={workspaceId}
+                moduleId={property.moduleId}
+                item={property}
+              />
+            }
+          />
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">{typeLabel}</Badge>
+            {relationship ? (
+              <Badge variant="outline">{relationship}</Badge>
+            ) : null}
+            {address ? <Badge variant="outline">{address}</Badge> : null}
+          </div>
+        </div>
       </div>
 
       <Card>
@@ -200,55 +205,14 @@ export function PropertyDetail({
         currency={currency}
       />
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Platby</h2>
-          <AddTransactionSheet
-            workspaceId={workspaceId}
-            categories={categories}
-            moduleId={property.moduleId}
-            itemId={property.id}
-            label="Pridať platbu"
-            variant="outline"
-          />
-        </div>
-        {payments.length === 0 ? (
-          <EmptyState
-            title="Žiadne platby"
-            description="Pridajte platbu viazanú na túto nehnuteľnosť."
-          />
-        ) : (
-          <TransactionList
-            items={payments}
-            workspaceId={workspaceId}
-            currency={currency}
-            showItemLink={false}
-          />
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Termíny</h2>
-          <AddEventSheet
-            workspaceId={workspaceId}
-            moduleId={property.moduleId}
-            itemId={property.id}
-          />
-        </div>
-        {events.length === 0 ? (
-          <EmptyState
-            title="Žiadne termíny"
-            description="Pridajte termín viazaný na túto nehnuteľnosť."
-          />
-        ) : (
-          <EventList
-            items={events}
-            workspaceId={workspaceId}
-            showItemLink={false}
-          />
-        )}
-      </section>
+      <PropertyAgenda
+        workspaceId={workspaceId}
+        propertyId={property.id}
+        currency={currency}
+        categories={categories}
+        itemPickerGroups={itemPickerGroups}
+        initialItems={agenda}
+      />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

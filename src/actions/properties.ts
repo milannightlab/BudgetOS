@@ -10,6 +10,7 @@ import { ensureDbUser } from "@/lib/auth";
 import { deletePrivateBlob, putPrivateBlob } from "@/lib/blob";
 import { createId } from "@/lib/id";
 import { requireWorkspaceAccess } from "@/lib/workspace";
+import { parseItemColor } from "@/lib/item-color";
 import {
   getItemTypeDefinition,
   parseAttributes,
@@ -77,6 +78,7 @@ export async function savePropertyAction(formData: FormData) {
     address: formData.get("attr_address") || "",
     relationshipType: formData.get("attr_relationshipType") || "",
   });
+  const color = parseItemColor(formData.get("attr_color"));
 
   if (existingId) {
     const existing = await db.query.items.findFirst({
@@ -94,6 +96,7 @@ export async function savePropertyAction(formData: FormData) {
       ...attributes,
       hiddenServiceTypes: parseHiddenServiceTypes(previous),
     };
+    if (color) nextAttrs.color = color;
 
     if (removeImage && typeof previous.imageUrl === "string") {
       await deletePrivateBlob(previous.imageUrl);
@@ -126,6 +129,7 @@ export async function savePropertyAction(formData: FormData) {
 
   const propertyId = createId("itm");
   const createAttrs: Record<string, unknown> = { ...attributes };
+  if (color) createAttrs.color = color;
 
   if (file instanceof File && file.size > 0) {
     createAttrs.imageUrl = await uploadPropertyImage(
@@ -333,8 +337,15 @@ export async function updatePropertyServiceAction(formData: FormData) {
     customerNumber: formData.get("customerNumber") || "",
     notes: formData.get("notes") || "",
   };
-  const attributes = parseAttributes(typeDef, rawAttrs);
+  const parsed = parseAttributes(typeDef, rawAttrs);
   // Drop legacy free-text provider; vendor lives on items.vendorId.
+  delete parsed.provider;
+  const color = parseItemColor(formData.get("attr_color"));
+  const attributes: Record<string, unknown> = {
+    ...existing,
+    ...parsed,
+  };
+  if (color) attributes.color = color;
   delete attributes.provider;
 
   await db

@@ -30,6 +30,7 @@ export function RecurringForm({
     "monthly",
   );
   const [type, setType] = useState<"expense" | "income">("expense");
+  const [hasEndDate, setHasEndDate] = useState(false);
   const [pending, startTransition] = useTransition();
 
   return (
@@ -40,6 +41,7 @@ export function RecurringForm({
           formData.set("categoryId", categoryId);
           formData.set("frequency", frequency);
           formData.set("type", type);
+          if (!hasEndDate) formData.delete("endDate");
           await createRecurringAction(formData);
           onSuccess?.();
         });
@@ -119,6 +121,23 @@ export function RecurringForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-3">
+        <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={hasEndDate}
+            onChange={(e) => setHasEndDate(e.target.checked)}
+            className="size-4 rounded border-border accent-teal-700"
+          />
+          Nastaviť dátum ukončenia
+        </label>
+        {hasEndDate ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="endDate">Ukončenie série</Label>
+            <Input id="endDate" name="endDate" type="date" required />
+          </div>
+        ) : null}
       </div>
       <Button type="submit" className="w-full" disabled={pending || !categoryId}>
         {pending ? "Ukladám…" : "Vytvoriť opakovanú platbu"}

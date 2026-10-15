@@ -9,7 +9,7 @@ export function formatMoney(amount: number, currency = "EUR", locale = "sk-SK") 
     style: "currency",
     currency,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(Math.abs(amount));
 }
 
 export function monthLabel(year: number, month: number, locale = "sk-SK") {

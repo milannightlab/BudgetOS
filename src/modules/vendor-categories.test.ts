@@ -20,7 +20,12 @@ describe("vendor-categories", () => {
   it("maps property service types to vendor categories", () => {
     expect(vendorCategoryForServiceType("electricity")).toBe("electricity");
     expect(vendorCategoryForServiceType("internet")).toBe("internet");
+    expect(vendorCategoryForServiceType("mortgage")).toBe("banking");
+    expect(vendorCategoryForServiceType("leasing")).toBe("banking");
+    expect(vendorCategoryForServiceType("pzp")).toBe("insurance_car");
+    expect(vendorCategoryForServiceType("comprehensive")).toBe("insurance_car");
     expect(vendorCategoryForServiceType("repair_fund")).toBeNull();
+    expect(vendorCategoryForServiceType("other")).toBeNull();
     expect(vendorCategoryForServiceType("weird")).toBe("other");
   });
 });

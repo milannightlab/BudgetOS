@@ -61,7 +61,7 @@ export function BottomNav({
     moduleNav.some((m) => pathMatches(m.href));
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-[#F7F9F8]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-[#F7F9F8]/80 md:hidden">
       <ul className="mx-auto grid max-w-lg grid-cols-5">
         {primaryItems.map((item) => {
           const active = pathMatches(item.href);

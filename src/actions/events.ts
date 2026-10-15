@@ -52,6 +52,29 @@ export async function createEventAction(formData: FormData) {
   if (parsed.itemId) revalidatePath(`/items/${parsed.itemId}`);
 }
 
+export async function setEventCompletedAction(
+  id: string,
+  workspaceId: string,
+  completed: boolean,
+) {
+  const user = await ensureDbUser();
+  await requireWorkspaceAccess(workspaceId, user.id);
+
+  await db
+    .update(calendarEvents)
+    .set({ completed })
+    .where(
+      and(
+        eq(calendarEvents.id, id),
+        eq(calendarEvents.workspaceId, workspaceId),
+      ),
+    );
+
+  revalidatePath("/");
+  revalidatePath("/modules", "layout");
+  revalidatePath("/calendar");
+}
+
 export async function deleteEventAction(id: string, workspaceId: string) {
   const user = await ensureDbUser();
   await requireWorkspaceAccess(workspaceId, user.id);
@@ -67,4 +90,5 @@ export async function deleteEventAction(id: string, workspaceId: string) {
 
   revalidatePath("/");
   revalidatePath("/modules", "layout");
+  revalidatePath("/calendar");
 }

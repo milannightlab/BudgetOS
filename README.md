@@ -5,7 +5,7 @@ Rodinný OS — modularná aplikácia na správu diania v rodine (termíny, doku
 ## Moduly (základ)
 
 - **Prehľad** — fixný dashboard (plánované platby 30 dní, termíny, dokumenty)
-- **Domácnosť, Deti, Doprava, Predplatné, Úvery, Investície** — shell stránky so zdieľanými termínmi a dokumentmi (detail modulov neskôr)
+- **Domácnosť, Rodina, Doprava, Predplatné, Úvery, Investície** — shell stránky so zdieľanými termínmi a dokumentmi (detail modulov neskôr)
 
 Rozširovanie: pridajte záznam do `src/modules/registry.ts` a voliteľne `src/modules/<slug>/`.
 

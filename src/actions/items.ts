@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { items, modules } from "@/db/schema";
 import { ensureDbUser } from "@/lib/auth";
 import { createId } from "@/lib/id";
+import { parseItemColor } from "@/lib/item-color";
 import { requireWorkspaceAccess } from "@/lib/workspace";
 import {
   getItemTypeDefinition,
@@ -75,6 +76,8 @@ export async function createItemAction(formData: FormData) {
     typeDef,
     collectAttributesFromForm(formData),
   );
+  const color = parseItemColor(formData.get("attr_color"));
+  if (color) attributes.color = color;
 
   const [created] = await db
     .insert(items)
@@ -134,6 +137,8 @@ export async function updateItemAction(formData: FormData) {
     ...preserved,
     ...parseAttributes(typeDef, collectAttributesFromForm(formData)),
   };
+  const color = parseItemColor(formData.get("attr_color"));
+  if (color) attributes.color = color;
 
   await db
     .update(items)

@@ -3,7 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createItemAction, updateItemAction } from "@/actions/items";
+import { ItemColorField } from "@/components/items/item-color-field";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_ITEM_COLOR, readItemColor } from "@/lib/item-color";
 import { itemDetailPath } from "@/lib/property-paths";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,6 +128,9 @@ export function ItemForm({
   const [attributes, setAttributes] = useState<Record<string, unknown>>(
     initial?.attributes ?? {},
   );
+  const [color, setColor] = useState(
+    readItemColor(initial?.attributes) ?? DEFAULT_ITEM_COLOR,
+  );
   const [pending, startTransition] = useTransition();
 
   const typeDef: ItemTypeDefinition =
@@ -141,7 +146,9 @@ export function ItemForm({
     const nextKeys = new Set(nextDef?.fields.map((f) => f.key) ?? []);
     const kept: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(attributes)) {
-      if (nextKeys.has(key)) kept[key] = value;
+      if (nextKeys.has(key) || key === "color" || key === "imageUrl") {
+        kept[key] = value;
+      }
     }
     setAttributes(kept);
     setType(nextType);
@@ -159,9 +166,11 @@ export function ItemForm({
             assignedMemberUserId === "none" ? "" : assignedMemberUserId,
           );
           for (const [key, value] of Object.entries(attributes)) {
+            if (key === "color") continue;
             if (value === null || value === undefined) continue;
             formData.set(`attr_${key}`, String(value));
           }
+          formData.set("attr_color", color);
           if (initial?.id) {
             formData.set("id", initial.id);
             await updateItemAction(formData);
@@ -206,6 +215,13 @@ export function ItemForm({
             placeholder="Napr. Byt Bratislava"
           />
         </div>
+        <ItemColorField
+          value={color}
+          onChange={(next) => {
+            setColor(next);
+            setAttributes((prev) => ({ ...prev, color: next }));
+          }}
+        />
         <div className="space-y-1.5">
           <Label htmlFor="description">Popis</Label>
           <Textarea

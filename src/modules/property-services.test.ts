@@ -17,6 +17,7 @@ describe("property service templates", () => {
       "internet",
       "waste",
       "heating",
+      "mortgage",
     ]);
   });
 

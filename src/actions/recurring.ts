@@ -6,8 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { recurringPayments } from "@/db/schema";
 import { ensureDbUser } from "@/lib/auth";
-import { createId } from "@/lib/id";
-import { expandRecurringPayments } from "@/lib/recurring";
+import { createRecurringSeries } from "@/lib/recurring";
 import { requireWorkspaceAccess } from "@/lib/workspace";
 
 const recurringSchema = z.object({
@@ -18,9 +17,15 @@ const recurringSchema = z.object({
   type: z.enum(["income", "expense"]).default("expense"),
   frequency: z.enum(["weekly", "monthly", "yearly"]),
   nextDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
 });
 
 export async function createRecurringAction(formData: FormData) {
+  const endDateRaw = formData.get("endDate");
   const parsed = recurringSchema.parse({
     workspaceId: formData.get("workspaceId"),
     categoryId: formData.get("categoryId"),
@@ -29,24 +34,28 @@ export async function createRecurringAction(formData: FormData) {
     type: formData.get("type") || "expense",
     frequency: formData.get("frequency"),
     nextDueDate: formData.get("nextDueDate"),
+    endDate: endDateRaw ? String(endDateRaw) : null,
   });
 
   const user = await ensureDbUser();
   await requireWorkspaceAccess(parsed.workspaceId, user.id);
 
-  await db.insert(recurringPayments).values({
-    id: createId("rec"),
+  if (parsed.endDate && parsed.endDate < parsed.nextDueDate) {
+    throw new Error("End date must be on or after the first payment date");
+  }
+
+  await createRecurringSeries({
     workspaceId: parsed.workspaceId,
     categoryId: parsed.categoryId,
     title: parsed.title,
     amount: parsed.amount.toFixed(2),
     type: parsed.type,
     frequency: parsed.frequency,
-    nextDueDate: parsed.nextDueDate,
+    startDate: parsed.nextDueDate,
+    endDate: parsed.endDate,
     createdByUserId: user.id,
+    firstStatus: "planned",
   });
-
-  await expandRecurringPayments();
 
   revalidatePath("/planned");
   revalidatePath("/");

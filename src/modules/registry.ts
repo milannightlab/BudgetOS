@@ -49,11 +49,11 @@ export const MODULES: readonly ModuleDefinition[] = [
   },
   {
     slug: "children",
-    label: "Deti",
+    label: "Rodina",
     href: "/modules/children",
     icon: Baby,
     color: "#c026d3",
-    description: "Školy, krúžky, tábory a vzdelávacie aktivity",
+    description: "Rodina, školy, krúžky, tábory a spoločné aktivity",
     order: 2,
     defaultEnabled: true,
   },

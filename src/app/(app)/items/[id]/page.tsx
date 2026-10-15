@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { MobileBackCrumb } from "@/components/app-breadcrumbs";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
 import { ArchiveItemButton } from "@/components/items/archive-item-button";
 import { EditItemSheet } from "@/components/items/edit-item-sheet";
@@ -20,6 +19,7 @@ import {
   getItemEvents,
   getItemPayments,
   getItemRelations,
+  getParentItemId,
   getParentPropertyId,
   getWorkspaceCategories,
   getWorkspaceItemsForSelect,
@@ -29,6 +29,7 @@ import {
   propertyPath,
   propertyServicePath,
 } from "@/lib/property-paths";
+import { vehiclePath, vehicleServicePath } from "@/lib/vehicle-paths";
 import { getActiveWorkspace } from "@/lib/workspace";
 import {
   getItemTypeDefinition,
@@ -72,10 +73,19 @@ export default async function ItemDetailPage({
   if (item.type === "property") {
     redirect(propertyPath(item.id));
   }
+  if (item.type === "vehicle") {
+    redirect(vehiclePath(item.id));
+  }
   if (item.type === "property_service" || item.type === "household_service") {
     const parentPropertyId = await getParentPropertyId(workspace.id, item.id);
     if (parentPropertyId) {
       redirect(propertyServicePath(parentPropertyId, item.id));
+    }
+  }
+  if (item.type === "vehicle_service") {
+    const parentVehicleId = await getParentItemId(workspace.id, item.id);
+    if (parentVehicleId) {
+      redirect(vehicleServicePath(parentVehicleId, item.id));
     }
   }
 
@@ -109,16 +119,15 @@ export default async function ItemDetailPage({
   );
 
   const attributes = (item.attributes ?? {}) as Record<string, unknown>;
+  const moduleLabel = moduleDef?.label ?? "Modul";
+  const crumbs = [
+    { label: moduleLabel, href: `/modules/${moduleSlug}` },
+    { label: item.name },
+  ];
 
   return (
     <div className="space-y-5">
-      <Link
-        href={`/modules/${moduleSlug}`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Späť do {moduleDef?.label ?? "modulu"}
-      </Link>
+      <MobileBackCrumb crumbs={crumbs} />
 
       <PageHeader
         title={item.name}
@@ -175,6 +184,7 @@ export default async function ItemDetailPage({
             categories={categories}
             moduleId={item.moduleId}
             itemId={item.id}
+            lockedItemLabel={item.name}
             label="Platba"
             variant="outline"
           />

@@ -5,9 +5,11 @@ import {
   RenameWorkspaceForm,
 } from "@/components/settings-forms";
 import { ModuleToggles } from "@/components/settings/module-toggles";
+import { SeedDemoButton } from "@/components/settings/seed-demo-button";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { hasDemoSeedData } from "@/db/seed-demo";
 import {
   getWorkspaceModules,
   seedWorkspaceModules,
@@ -31,12 +33,14 @@ export default async function SettingsPage() {
 
   await seedWorkspaceModules(workspace.id);
 
-  const [members, invites, categories, workspaceModules] = await Promise.all([
-    getWorkspaceMembers(workspace.id),
-    getPendingInvites(workspace.id),
-    getWorkspaceCategories(workspace.id),
-    getWorkspaceModules(workspace.id),
-  ]);
+  const [members, invites, categories, workspaceModules, demoSeeded] =
+    await Promise.all([
+      getWorkspaceMembers(workspace.id),
+      getPendingInvites(workspace.id),
+      getWorkspaceCategories(workspace.id),
+      getWorkspaceModules(workspace.id),
+      hasDemoSeedData(workspace.id),
+    ]);
 
   const me = members.find((m) => m.userId === user.id);
   const isOwner = me?.role === "owner";
@@ -91,6 +95,22 @@ export default async function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Mena: {workspace.currency}
           </p>
+          {isOwner ? (
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-sm font-medium">Vzorové dáta</p>
+              <p className="text-xs text-muted-foreground">
+                Pridá ukážkové platby za služby a termíny k existujúcim
+                nehnuteľnostiam a vozidlám. Nové položky nevytvára.
+              </p>
+              {demoSeeded ? (
+                <p className="text-xs text-muted-foreground">
+                  Vzorové dáta sú v tomto workspace už načítané.
+                </p>
+              ) : (
+                <SeedDemoButton workspaceId={workspace.id} />
+              )}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

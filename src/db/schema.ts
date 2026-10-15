@@ -270,11 +270,17 @@ export const recurringPayments = pgTable("recurring_payments", {
   moduleId: text("module_id").references(() => modules.id, {
     onDelete: "set null",
   }),
+  itemId: text("item_id").references(() => items.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   type: transactionTypeEnum("type").notNull().default("expense"),
   frequency: recurringFrequencyEnum("frequency").notNull(),
   nextDueDate: date("next_due_date").notNull(),
+  /** Inclusive end date; null = open-ended series. */
+  endDate: date("end_date"),
+  note: text("note"),
   active: boolean("active").notNull().default(true),
   createdByUserId: text("created_by_user_id")
     .notNull()
@@ -354,6 +360,7 @@ export const calendarEvents = pgTable("calendar_events", {
   eventDate: date("event_date").notNull(),
   type: calendarEventTypeEnum("type").notNull().default("deadline"),
   note: text("note"),
+  completed: boolean("completed").notNull().default(false),
   createdByUserId: text("created_by_user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -571,6 +578,10 @@ export const recurringPaymentsRelations = relations(
     module: one(modules, {
       fields: [recurringPayments.moduleId],
       references: [modules.id],
+    }),
+    item: one(items, {
+      fields: [recurringPayments.itemId],
+      references: [items.id],
     }),
     transactions: many(transactions),
   }),

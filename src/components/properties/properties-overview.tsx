@@ -113,6 +113,7 @@ export function PropertiesOverview({
       ) : (
         <div className="overflow-x-clip">
           <DndContext
+            id="properties-sortable"
             sensors={sensors}
             collisionDetection={closestCenter}
             modifiers={[restrictToParentElement]}

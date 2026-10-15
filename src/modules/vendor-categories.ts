@@ -33,11 +33,16 @@ export function getVendorCategoryLabel(key: string): string {
   return VENDOR_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 }
 
-/** Map property serviceType → vendor category for filtering. */
+/** Map property/vehicle serviceType → vendor category for filtering. */
 export function vendorCategoryForServiceType(
   serviceType: string,
 ): VendorCategoryKey | null {
-  if (serviceType === "repair_fund") return null;
+  // Custom / uncategorized services: allow picking any vendor.
+  if (serviceType === "repair_fund" || serviceType === "other") return null;
+  if (serviceType === "mortgage" || serviceType === "leasing") return "banking";
+  if (serviceType === "pzp" || serviceType === "comprehensive") {
+    return "insurance_car";
+  }
   if (isVendorCategoryKey(serviceType)) return serviceType;
   return "other";
 }

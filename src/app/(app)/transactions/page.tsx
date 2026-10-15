@@ -7,6 +7,7 @@ import { currentYearMonth } from "@/lib/dates";
 import { monthLabel } from "@/lib/money";
 import {
   getMonthTransactions,
+  getTransactionItemPickerGroups,
   getWorkspaceCategories,
 } from "@/lib/queries";
 import { getActiveWorkspace } from "@/lib/workspace";
@@ -22,9 +23,10 @@ export default async function TransactionsPage({
 
   const params = await searchParams;
   const { year, month } = currentYearMonth();
-  const [rows, categories] = await Promise.all([
+  const [rows, categories, itemPickerGroups] = await Promise.all([
     getMonthTransactions(workspace.id, year, month),
     getWorkspaceCategories(workspace.id),
+    getTransactionItemPickerGroups(workspace.id),
   ]);
 
   const filtered = rows.filter((row) => {
@@ -42,6 +44,7 @@ export default async function TransactionsPage({
           <AddTransactionSheet
             workspaceId={workspace.id}
             categories={categories}
+            itemPickerGroups={itemPickerGroups}
           />
         }
       />

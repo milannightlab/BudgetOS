@@ -20,11 +20,13 @@ export function EventForm({
   workspaceId,
   moduleId,
   itemId,
+  defaultDate,
   onSuccess,
 }: {
   workspaceId: string;
   moduleId?: string | null;
   itemId?: string | null;
+  defaultDate?: string;
   onSuccess?: () => void;
 }) {
   const [type, setType] = useState<"deadline" | "event" | "reminder">("deadline");
@@ -56,7 +58,7 @@ export function EventForm({
             name="eventDate"
             type="date"
             required
-            defaultValue={todayStr()}
+            defaultValue={defaultDate ?? todayStr()}
           />
         </div>
         <div className="space-y-1.5">
